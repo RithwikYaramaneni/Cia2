@@ -27,10 +27,14 @@ Configure these environment values in the Jenkins pipeline or job:
 - `IMAGE_REPOSITORY`: registry path, such as `rithwik8/cicd-demo`
 - `DOCKER_CREDENTIALS_ID`: Jenkins username/password credential ID
 - `KUBE_CONTEXT`: the configured context for the cloud Kubernetes cluster
+- `PUSH_IMAGE`: set to `true` to log in and push to the configured registry;
+  leave it `false` for the local minikube workflow
 
 The Jenkinsfile performs checkout, Maven compilation and tests, Docker image
-build, registry push, Kubernetes deployment, rollout waiting, and readiness
-verification. Do not commit registry passwords or kubeconfig files.
+build, Kubernetes deployment, rollout waiting, and readiness verification.
+When `PUSH_IMAGE=true`, it also performs an authenticated registry push. When
+using the default local minikube workflow, Jenkins loads the image directly
+into minikube instead. Do not commit registry passwords or kubeconfig files.
 
 ## Kubernetes deployment
 
@@ -45,5 +49,6 @@ kubectl set image deployment/cicd-demo \
 kubectl rollout status deployment/cicd-demo
 ```
 
-Replace the registry repository in the manifest if you use a different
-Docker Hub account.
+The deployment uses `IfNotPresent` so it works with both images loaded into
+minikube and images pulled from a registry. Replace the registry repository in
+the manifest if you use a different Docker Hub account.

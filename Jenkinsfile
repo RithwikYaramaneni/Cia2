@@ -6,6 +6,7 @@ pipeline {
         IMAGE_TAG = "${BUILD_NUMBER}"
         DOCKER_CREDENTIALS_ID = 'dockerhub-credentials'
         KUBE_CONTEXT = 'minikube'
+        PUSH_IMAGE = 'false'
     }
     stages {
         stage('Checkout') {
@@ -24,6 +25,9 @@ pipeline {
             }
         }
         stage('Push Image') {
+            when {
+                environment name: 'PUSH_IMAGE', value: 'true'
+            }
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: "${DOCKER_CREDENTIALS_ID}",
@@ -37,6 +41,20 @@ pipeline {
                         docker push "$DOCKER_REGISTRY/$IMAGE_REPOSITORY:$IMAGE_TAG"
                     '''
                 }
+            }
+        }
+        stage('Load Image into Minikube') {
+            when {
+                allOf {
+                    environment name: 'KUBE_CONTEXT', value: 'minikube'
+                    environment name: 'PUSH_IMAGE', value: 'false'
+                }
+            }
+            steps {
+                sh '''
+                    minikube --profile minikube image load \
+                        "$DOCKER_REGISTRY/$IMAGE_REPOSITORY:$IMAGE_TAG"
+                '''
             }
         }
         stage('Deploy to Kubernetes') {
@@ -65,7 +83,11 @@ pipeline {
     post {
         always {
             junit testResults: 'target/surefire-reports/*.xml', allowEmptyResults: true
-            sh 'docker logout "$DOCKER_REGISTRY" || true'
+            script {
+                if (env.PUSH_IMAGE == 'true') {
+                    sh 'docker logout "$DOCKER_REGISTRY" || true'
+                }
+            }
         }
     }
 }

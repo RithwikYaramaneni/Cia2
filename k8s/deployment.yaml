@@ -15,7 +15,7 @@ spec:
       containers:
       - name: cicd-demo
         image: docker.io/rithwik8/cicd-demo:latest
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8080
         readinessProbe:
