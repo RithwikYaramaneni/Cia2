@@ -2,7 +2,8 @@
 .gitignore
 .idea
 .vscode
-target
+target/*
+!target/cicd-demo-0.0.1-SNAPSHOT.jar
 *.docx
 *.log
 README.md
