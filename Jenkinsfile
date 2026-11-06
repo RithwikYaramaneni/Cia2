@@ -4,6 +4,7 @@ pipeline {
         DOCKER_REGISTRY = 'docker.io'
         IMAGE_REPOSITORY = 'rithwik8/cicd-demo'
         IMAGE_TAG = "${BUILD_NUMBER}"
+        DOCKER_CREDENTIALS_ID = 'dockerhub-credentials'
         KUBE_CONTEXT = 'minikube'
     }
     stages {
@@ -24,9 +25,18 @@ pipeline {
         }
         stage('Push Image') {
             steps {
-                sh '''
-                    docker push "$DOCKER_REGISTRY/$IMAGE_REPOSITORY:$IMAGE_TAG"
-                '''
+                withCredentials([usernamePassword(
+                    credentialsId: "${DOCKER_CREDENTIALS_ID}",
+                    usernameVariable: 'DOCKER_USERNAME',
+                    passwordVariable: 'DOCKER_PASSWORD'
+                )]) {
+                    sh '''
+                        set +x
+                        echo "$DOCKER_PASSWORD" | docker login "$DOCKER_REGISTRY" \
+                            --username "$DOCKER_USERNAME" --password-stdin
+                        docker push "$DOCKER_REGISTRY/$IMAGE_REPOSITORY:$IMAGE_TAG"
+                    '''
+                }
             }
         }
         stage('Deploy to Kubernetes') {
@@ -50,6 +60,12 @@ pipeline {
                     kubectl --context "$KUBE_CONTEXT" -n default get service cicd-demo-service
                 '''
             }
+        }
+    }
+    post {
+        always {
+            junit testResults: 'target/surefire-reports/*.xml', allowEmptyResults: true
+            sh 'docker logout "$DOCKER_REGISTRY" || true'
         }
     }
 }
